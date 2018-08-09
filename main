@@ -1,0 +1,181 @@
+
+function O = get_burst_data()
+
+    %Burst analysis pathway and save pathway
+    pathway1 = 'C:\Users\James\Desktop\Ziyue\Recordings 2-2018\DIV10\';
+    pathwaySave = 'C:\Users\James\Desktop\Ziyue\Recordings 2-2018\';
+    
+    folders = dir(pathway1); 
+    folders = struct2cell(folders);
+    folders = folders(1,:); % filenames for all files in the folder
+    folders = folders(3:end); % the dir function always appends two useless filenames to the beginning of the vector
+    
+    %Create cell of row folders+8 and column 13
+    O = cell(length(folders)+8, 13);
+    
+    %Headers for cell
+    O{1,1} = 'Condition';
+    O{1,2} = '# of Spikes';
+    O{1,3} = 'Mean Inter-spike Interval';
+    O{1,4} = 'Min Inter-spike Interval';
+    O{1,5} = 'Max Inter-spike Interval';
+    O{1,6} = '# of Bursts';
+    O{1,7} = 'Mean Burst Duration';
+    O{1,8} = 'Mean Spikes per Burst';
+    O{1,9} = 'Remaining Spikes Proportion';
+    O{1,10} = 'Z Score Spikes';
+    O{1,11} = 'Z Score Bursts';
+    O{1,12} = 'Z Score Spikes in Burst';
+    O{1,13} = 'Z Score Remaining Spikes';
+    O{1,14} = 'Non Gaussian Parameter ISI';
+    
+    c = 1;
+    e2 = 1;
+    e3 = 1;
+    e4 = 1;
+    arr = zeros(1, length(folders));
+    count = 1;
+    for ii = 1:4
+        for kk = 1:length(folders)
+            if ii == 1
+                if strcmp(folders{kk}(end-1:end), 'ol') == 1
+                    arr(count) = kk;
+                    count = count + 1;
+                    c = c + 1;
+                end
+            elseif ii == 2
+                if strcmp(folders{kk}(end-1:end), 'E2') == 1
+                    arr(count) = kk;
+                    count = count + 1;
+                    e2 = e2 + 1;
+                end
+            elseif ii == 3
+                if strcmp(folders{kk}(end-1:end), 'E3') == 1
+                    arr(count) = kk;
+                    count = count + 1;
+                    e3 = e3 + 1;
+                end
+            else
+                if strcmp(folders{kk}(end-1:end), 'E4') == 1
+                    arr(count) = kk;
+                    count = count + 1;
+                    e4 = e4 + 1;
+                end
+            end
+        end
+    end
+                
+    for jj = 1:length(arr)
+        pathway2 = strcat(folders{arr(1, jj)}, '\');
+        pathway3 = strcat(pathway2, folders{arr(1, jj)});
+        pathway4 = strcat(pathway3, '_0004\');
+        pathway12 = fullfile(pathway1, pathway4);
+        
+        load(strcat(pathway12,'all_adch.mat'))
+        
+        num_spikes = length(all_isi) + 1;
+        mean_isi = mean(all_isi);
+        min_isi = min(all_isi);
+        max_isi = max(all_isi);
+   
+        num_bursts = length(total_result(:,1));
+        burst_dur = mean(total_result(:,3));
+        spike_per_burst = mean(total_result(:,2));
+        remaining_spikes = length(remaining_isi_array);
+        
+        remaining_spikes_prop = remaining_spikes / num_spikes;
+        
+        gauss_factor = (var(all_isi))^2/kurtosis(all_isi);
+        
+        O{jj+1,1} = folders{arr(1, jj)};
+        
+        O{jj+1,2} = num_spikes;
+        O{jj+1,3} = mean_isi;
+        O{jj+1,4} = min_isi;
+        O{jj+1,5} = max_isi;
+        O{jj+1,6} = num_bursts;
+        O{jj+1,7} = burst_dur;
+        O{jj+1,8} = spike_per_burst;
+        O{jj+1,9} = remaining_spikes_prop;
+        O{jj+1,14} = gauss_factor;
+    end
+    
+    spike_num = O(:,2);
+    spike_num = spike_num(2:end);
+    spike_num = cell2mat(spike_num);
+    mean_spike = mean(spike_num);
+    std_spike = std(spike_num);
+    
+    burst_num = O(:,6);
+    burst_num = burst_num(2:end);
+    burst_num = cell2mat(burst_num);
+    mean_burst = mean(burst_num);
+    std_burst = std(burst_num);
+    
+    spikes_burst = O(:,8);
+    spikes_burst = spikes_burst(2:end);
+    spikes_burst = cell2mat(spikes_burst);
+    mean_spikes_burst = mean(spikes_burst);
+    std_spikes_burst = std(spikes_burst);
+    
+    remaining_prop = O(:,9);
+    remaining_prop = remaining_prop(2:end);
+    remaining_prop = cell2mat(remaining_prop);
+    mean_remaining = mean(remaining_prop);
+    std_remaining = std(remaining_prop);
+    
+    for ii = 1:length(spike_num)
+        O{ii+1, 10} = (spike_num(ii) - mean_spike) / std_spike;
+        O{ii+1, 11} = (burst_num(ii) - mean_burst) / std_burst;
+        O{ii+1, 12} = (spikes_burst(ii) - mean_spikes_burst) / std_spikes_burst;
+        O{ii+1, 13} = (remaining_prop(ii) - mean_remaining) / std_remaining;
+    end
+    
+    O{length(folders)+3, 1} = 'Control'; 
+    for i = 2:14
+        tempo = O(:,i);
+        tempo = tempo(2:end);
+        tempo = cell2mat(tempo);
+        O{length(folders)+3, i} = mean(tempo(1:c-1));
+        O{length(folders)+10,i} = var(tempo(1:c-1))^2/kurtosis(tempo(1:c-1));
+    end
+        
+    O{length(folders)+4, 1} = 'E2';
+    for i = 2:14
+        tempo = O(:,i);
+        tempo = tempo(2:end);
+        tempo = cell2mat(tempo);
+        O{length(folders)+4, i} = mean(tempo(c:c+e2-2));
+        O{length(folders)+11,i} = var(tempo(c:c+e2-2))^2/kurtosis(tempo(c:c+e2-2));        
+    end   
+    
+    O{length(folders)+5, 1} = 'E3';
+    for i = 2:14
+        tempo = O(:,i);
+        tempo = tempo(2:end);
+        tempo = cell2mat(tempo);
+        O{length(folders)+5, i} = mean(tempo(c+e2-1:c+e2+e3-3));
+        O{length(folders)+12,i} = var(tempo(c+e2-1:c+e2+e3-3))^2/kurtosis(tempo(c+e2-1:c+e2+e3-3));       
+    end
+    
+    O{length(folders)+6, 1} = 'E4';
+    for i = 2:14
+        tempo = O(:,i);
+        tempo = tempo(2:end);
+        tempo = cell2mat(tempo);
+        O{length(folders)+6, i} = mean(tempo(c+e2+e3-2:c+e2+e3+e4-4));
+        O{length(folders)+13,i} = var(tempo(c+e2+e3-2:c+e2+e3+e4-4))^2/kurtosis(tempo(c+e2+e3-2:c+e2+e3+e4-4));        
+    end
+   
+    O{length(folders)+7, 1} = 'Total';
+    for i = 2:14
+        tempo = O(:, i);
+        tempo = tempo(2:end);
+        tempo = cell2mat(tempo);
+        O{length(folders)+7, i} = mean(tempo(1: c+e2+e3+e4-4));
+        O{length(folders)+14,i} = var(tempo(1: c+e2+e3+e4-4))^2/kurtosis(tempo(1: c+e2+e3+e4-4));   
+    end
+    
+    O{length(folders)+9,1} = 'Gaussian Factor?';
+    
+    xlswrite(strcat(pathwaySave, 'All_Conditions'), O);
